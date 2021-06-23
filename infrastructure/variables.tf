@@ -9,3 +9,9 @@ variable "backend_image" {
   default     = "ghcr.io/evenh/iac-workshop-backend:latest"
   description = "The Docker image to run for the backend"
 }
+
+variable "frontend_zip" {
+  type        = string
+  default     = "https://github.com/bekk/iac-workshop/suites/3066485199/artifacts/69831245"
+  description = "URL to ZIP containing the compiled frontend"
+}

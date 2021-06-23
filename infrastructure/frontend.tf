@@ -20,13 +20,26 @@ resource "azurerm_storage_account" "web" {
   depends_on = [azurerm_dns_cname_record.www]
 }
 
-resource "azurerm_storage_blob" "index" {
-  name                   = "index.html"
+# TODO: Loop contents
+resource "azurerm_storage_blob" "static-files" {
+  for_each               = fileset("${path.module}/payload", "*")
+  name                   = each.key
   storage_account_name   = azurerm_storage_account.web.name
   storage_container_name = "$web"
   type                   = "Block"
-  content_type           = "text/html"
-  source_content = templatefile("${path.module}/templates/index.html.tmpl", {
-    unique_id = local.unique_id
-  })
+  content_type           = "text/html" # TODO: Dynamic mimetype
+  source_content         = file("${path.module}/payload/${each.key}")
+
+  depends_on = [null_resource.frontend-payload]
+}
+
+resource "null_resource" "frontend-payload" {
+  triggers = {
+    src = var.frontend_zip
+  }
+
+  provisioner "local-exec" {
+    # TODO: frontend zip is not actually used yet
+    command = "${path.module}/frontend.sh ${var.frontend_zip} http://${azurerm_container_group.backend.fqdn}:8080/api"
+  }
 }

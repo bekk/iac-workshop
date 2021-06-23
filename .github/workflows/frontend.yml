@@ -27,9 +27,9 @@ jobs:
         with:
           draft: false
           prerelease: false
-          release_name: ${{ github.ref }}
-          tag_name: ${{ github.ref }}
-          body: A new release
+          release_name: Frontend release ${{ github.sha }}
+          tag_name: frontend-${{ github.sha }}
+          body: Frontend release
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

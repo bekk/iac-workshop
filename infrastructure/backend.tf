@@ -1,21 +1,45 @@
-resource "azurerm_app_service_plan" "appservice" {
-  name                = local.unique_id
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-
-  kind     = "Linux"
-  reserved = true
-
-  sku {
-    tier = "Basic"
-    size = "B1"
-  }
+locals {
+  server_port = "8080"
+  mgmt_port   = "8090"
 }
 
-resource "azurerm_app_service" "app" {
-  name                = local.unique_id
+resource "random_password" "jwt-secret" {
+  length  = 64
+  special = false
+  lower   = true
+  upper   = true
+  number  = true
+}
+
+resource "azurerm_container_group" "backend" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
+  name                = "iac-workshop-backend"
+  ip_address_type     = "public"
+  dns_name_label      = local.unique_id_raw
+  os_type             = "Linux"
 
-  app_service_plan_id = azurerm_app_service_plan.appservice.id
+  container {
+    name   = "backend"
+    image  = var.backend_image
+    cpu    = "1"
+    memory = "1"
+
+    ports {
+      port     = local.server_port
+      protocol = "TCP"
+    }
+
+    secure_environment_variables = {
+      "JWT_SECRET" = random_password.jwt-secret.result
+    }
+
+    readiness_probe {
+      http_get {
+        path   = "/actuator/health"
+        port   = local.mgmt_port
+        scheme = "Http"
+      }
+    }
+  }
 }

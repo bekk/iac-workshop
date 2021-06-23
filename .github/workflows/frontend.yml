@@ -19,7 +19,7 @@ jobs:
         run: |
           npm ci
           REACT_APP_BACKEND_URL=will-be-replaced-by-terraform npm run build --if-present
-          zip -r release.zip build
+          zip -r release.zip build/*
         working-directory: frontend
 
       - name: release

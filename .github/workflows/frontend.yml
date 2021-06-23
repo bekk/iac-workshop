@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
       - name: npm install & build
-        run:
+        run: |
           npm ci
           npm run build --if-present
         working-directory: frontend

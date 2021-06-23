@@ -23,6 +23,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: iac-workshop-frontend
-          path: build
+          path: frontend/build
           if-no-files-found: error
-        working-directory: frontend

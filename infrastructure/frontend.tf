@@ -20,15 +20,26 @@ resource "azurerm_storage_account" "web" {
   depends_on = [azurerm_dns_cname_record.www]
 }
 
-# TODO: Loop contents
+locals {
+  filetype_endings = {
+    js   = "application/javascript"
+    ico  = "image/x-icon"
+    html = "text/html"
+    json = "application/json"
+    map  = "application/json"
+    js   = "application/javascript"
+    txt  = "text/plain"
+  }
+}
+
 resource "azurerm_storage_blob" "static-files" {
-  for_each               = fileset("${path.module}/payload", "*")
+  for_each               = fileset("${path.module}/payload", "**")
   name                   = each.key
   storage_account_name   = azurerm_storage_account.web.name
   storage_container_name = "$web"
   type                   = "Block"
-  content_type           = "text/html" # TODO: Dynamic mimetype
-  source_content         = file("${path.module}/payload/${each.key}")
+  content_type           = local.filetype_endings[regex("[a-z]+$", "${each.key}")]
+  source = "${path.module}/payload/${each.key}"
 
   depends_on = [null_resource.frontend-payload]
 }

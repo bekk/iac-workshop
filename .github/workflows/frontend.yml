@@ -29,7 +29,7 @@ jobs:
           draft: false
           prerelease: false
           release_name: Frontend release ${{ github.sha }}
-          tag_name: frontend-${{ github.job }}-${{ github.sha }}
+          tag_name: frontend-${{ github.run_id }}-${{ github.sha }}
           body: Frontend release
         env:
           GITHUB_TOKEN: ${{ github.token }}

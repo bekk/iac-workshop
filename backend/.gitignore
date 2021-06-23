@@ -1,0 +1,19 @@
+# dependencies
+/node_modules
+/bower_components
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+*.launch
+.settings/
+
+target/
+*.class
+*.jar
+*.iml
+
+#System Files
+.DS_Store
+Thumbs.db

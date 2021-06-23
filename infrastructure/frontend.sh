@@ -22,4 +22,6 @@ unzip $ZIP_LOCATION -d payload
 grep -RiIl "$NEEDLE" payload | xargs sed -i.bak "s#$NEEDLE#$BACKEND_API_URL#g"
 
 rm -f payload/static/js/*.bak
+
+az storage blob upload-batch --account-name iacworkshopu78t18o6 --source payload/ --destination '$web'
 #TODO: Remove zip

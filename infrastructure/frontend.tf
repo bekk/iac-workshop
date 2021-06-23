@@ -32,6 +32,7 @@ locals {
   }
 }
 
+/*
 resource "azurerm_storage_blob" "static-files" {
   for_each               = fileset("${path.module}/payload", "**")
   name                   = each.key
@@ -47,6 +48,7 @@ resource "azurerm_storage_blob" "static-files" {
   depends_on = [null_resource.frontend-payload]
 
 }
+*/
 
 resource "null_resource" "frontend-payload" {
   triggers = {

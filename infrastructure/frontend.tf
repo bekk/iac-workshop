@@ -1,4 +1,3 @@
-# TODO: Consider CDN
 resource "azurerm_storage_account" "web" {
   name                      = local.unique_id_sanitized
   resource_group_name       = azurerm_resource_group.rg.name
@@ -17,6 +16,8 @@ resource "azurerm_storage_account" "web" {
   static_website {
     index_document = "index.html"
   }
+
+  depends_on = [azurerm_dns_cname_record.www]
 }
 
 resource "azurerm_storage_blob" "index" {

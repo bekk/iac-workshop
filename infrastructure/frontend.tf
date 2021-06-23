@@ -41,12 +41,16 @@ resource "azurerm_storage_blob" "static-files" {
   content_type           = local.filetype_endings[regex("[a-z]+$", "${each.key}")]
   source = "${path.module}/payload/${each.key}"
 
+  # Forces recreation if the file contents changes
+  content_md5 = filemd5("${path.module}/payload/${each.key}")
+
   depends_on = [null_resource.frontend-payload]
+
 }
 
 resource "null_resource" "frontend-payload" {
   triggers = {
-    src = var.frontend_zip
+    build_time = timestamp()
   }
 
   provisioner "local-exec" {

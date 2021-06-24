@@ -52,11 +52,11 @@ resource "azurerm_storage_blob" "static-files" {
 
 resource "null_resource" "frontend-payload" {
   triggers = {
+    // TODO: Some stort of stable trigger?
     build_time = timestamp()
   }
 
   provisioner "local-exec" {
-    # TODO: frontend zip is not actually used yet
-    command = "${path.module}/frontend.sh ${var.frontend_zip} http://${azurerm_container_group.backend.fqdn}:8080/api"
+    command = "${path.module}/frontend.sh ${var.frontend_zip} http://${azurerm_container_group.backend.fqdn}:8080/api ${azurerm_storage_account.web.name} ${azurerm_storage_account.web.primary_access_key}"
   }
 }

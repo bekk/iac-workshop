@@ -7,6 +7,8 @@ set -x # TODO: Debugging only
 
 FRONTEND_ZIP_URL="$1"
 BACKEND_API_URL="$2"
+STORAGE_ACCOUNT_NAME="$3"
+STORAGE_ACCOUNT_KEY="$4"
 
 NEEDLE="will-be-replaced-by-terraform" # defined in frontend github action
 ZIP_LOCATION='./iac-workshop-frontend.zip'
@@ -23,5 +25,9 @@ grep -RiIl "$NEEDLE" payload | xargs sed -i.bak "s#$NEEDLE#$BACKEND_API_URL#g"
 
 rm -f payload/static/js/*.bak
 
-az storage blob upload-batch --account-name iacworkshopu78t18o6 --source payload/ --destination '$web'
+az storage blob upload-batch \
+   --account-name "$STORAGE_ACCOUNT_NAME" \
+   --account-key "$STORAGE_ACCOUNT_KEY" \
+   --source payload/ \
+   --destination '$web'
 #TODO: Remove zip

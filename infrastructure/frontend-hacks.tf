@@ -10,7 +10,6 @@
 // `{"etag": "<etag>"}`.  The etag will change when the frontend changes, and
 // other resources can use it to decide whether to do changes.
 // Note: This is done during the *plan* phase.
-/* This comment will be removed during the tutorial
 data "external" "frontend-zip-etag" {
   program = ["${path.module}/hacks/etag.sh", var.frontend_zip]
 }
@@ -27,4 +26,3 @@ resource "null_resource" "frontend-payload" {
     command = "${path.module}/hacks/frontend.sh ${var.frontend_zip} http://${azurerm_container_group.backend.fqdn}:8080/api ${azurerm_storage_account.web.name} ${azurerm_storage_account.web.primary_access_key}"
   }
 }
-*/

@@ -1,6 +1,8 @@
 # Infrastructure as Code-workshop med Rett i prod 🚀
 
-Denne workshopen gir en intro til infrastructure as code (IaC) med [terraform](https://www.terraform.io/).
+Denne workshopen gir en intro til infrastructure as code (IaC) med [terraform](https://www.terraform.io/). Se slides i [docs](/docs).
+
+**NB:** Per nå har workshopen en antagelse om at du jobber i Bekk, men dette kan refaktoreres ut i fremtiden.
 
 ## Før du starter
 

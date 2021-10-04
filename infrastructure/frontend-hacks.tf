@@ -23,6 +23,6 @@ resource "null_resource" "frontend-payload" {
 
   // Run the hacks/frontend.sh script, that deploys the frontend.
   provisioner "local-exec" {
-    command = "${path.module}/hacks/frontend.sh ${var.frontend_zip} http://${azurerm_container_group.backend.fqdn}:8080/api ${azurerm_storage_account.web.name} ${azurerm_storage_account.web.primary_access_key}"
+    command = "${path.module}/hacks/frontend.sh ${var.frontend_zip} https://${azurerm_container_group.backend.fqdn}/api ${azurerm_storage_account.web.name} ${azurerm_storage_account.web.primary_access_key}"
   }
 }

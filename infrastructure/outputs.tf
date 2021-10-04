@@ -7,5 +7,5 @@ output "frontend_url" {
 }
 
 output "backend_url" {
-  value = "http://${azurerm_container_group.backend.fqdn}"
+  value = "https://${azurerm_container_group.backend.fqdn}"
 }

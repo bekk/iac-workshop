@@ -28,8 +28,6 @@ I `infrastructure/`-mappen er det foreløpig ikke så mye:
 
 * `variables.tf` inneholder variable som gis til terraform. `variable` likner litt på `locals`, men disse kan spesifiseres og overskrives når terraform kjøres, f.eks. ved å gi et ekstra argument på kommandolinjen. Det er litt tungvint å spesifisere variable på kommandolinjen, så vi kommer tilbake til hvordan vi kan gjøre dette enklere. `location` er den eneste variabelen som er definert foreløpig, og den har fått en default-verdi, så det er ikke noe vi trenger å gjøre noe med foreløpig.
 
-* `hacks/`-mappen og `frontend-hacks.tf` inneholder et par skript og litt kode som brukes for å deploye frontenden når den endrer seg. Disse trenger du foreløpig ikke å tenke så mye på, vi kommer tilbake til dem senere.
-
 Det var mye tekst, la oss gå videre til godsakene!
 
 1. Før du kan provisjonere infrastruktur med terraform, må du initialisere providerne som er spesifisert i `terraform.tf`. Dette kan du gjøre ved å kjøre `terraform init` (husk å kjøre den fra `infrastructure/`-mappen!). Dette gjør ingen endringer på infrastrukturen, men oppretter bl.a. `.terraform`-mappen. `terraform init` må kjøres på nytt om du ønsker å installere eller oppgradere providers. **NB!** `.terraform` må ikke committes til git, da den kan inneholde sensitiv informasjon.
@@ -168,9 +166,9 @@ Det var backenden! Dersom du nå får en god respons fra `http://xxxxxxxx.westeu
 
 ## Frontend
 
-Frontenden blir bygd av en GitHub Action, som lager en zip-fil som en GitHub-release. Zip-filen skal bli lastet ned, pakket ut og deretter lastet opp til en Azure Storage Account som skal fungere som en nettside med statiske filer.
+Vi skal bruke Azure Blob Storage til å hoste statiske filer frontend-filer. Forenklet sett skal vi bruke en Azure Storage Account som en tradisjonell webserver.
 
-Først skal vi opprette en Azure Storage Account:
+Først skal vi opprette en ny storage account:
 
 1. Opprett en ny fil, `frontend.tf`, og legg til følgende kode:
 
@@ -237,30 +235,55 @@ I dette steget har vi opprettet en ny storage account, med en storage account co
 
 ## Frontend deploy
 
-Vi deploye de statiske filene for frontenden i storage account containeren `$web`. Her har vi skrevet en del kode for å hjelpe deg. Denne koden finner du i `frontend-hacks.tf` og scriptene i `infrastructure/hacks/`.
+For at brukere skal kunne se og lage poster i Bekkium må frontenden opp. I dette eksempelet skal vi bruke Terraform for å lage de statiske frontend-filene og videre laste opp filer.
 
-1. Først lag en ny variabel `frontend_zip` i `variables.tf`:
+For å kunne nå de statiske i nettleseren, må vi deploye filene i storage account containeren `$web`.
 
+1. Først må vi bygge frontenden. Opprett en [null_resource](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) i `frontend.tf` for å holde styr på når frontend-koden endrer seg, for derfor å trigge et nytt bygg:
     ```terraform
-    variable "frontend_zip" {
-      type        = string
-      description = "URL to ZIP containing the compiled frontend"
+    // På toppen av fila, sett inn en variabel
+    locals {
+      frontend_dir = "${path.module}/../frontend"
+    }
+   
+    // I bunn av filen
+    resource "null_resource" "build-frontend-if-src-changed" {
+      triggers = "<sett inn en variabel som holder styr på hvilke filer som finnes og om de har endret seg>"
+
+      provisioner "local-exec" {
+        working_dir = local.frontend_dir
+        # Laster ned avhengigheter og bygger statiske filer
+        command     = "npm ci && npm run build --if-present"
+        environment = {
+          # Pek på vårt allerede kjørende API
+          REACT_APP_BACKEND_URL = "http://<adresse til backend>/api"
+        }
+      }
     }
     ```
 
-1. Vi kan legge til enda en linje i `variables.auto.tfvars` med URL-en til GitHub-releasen:
-
+2. Når frontend-filene er bygget i `frontend/build` er de klare for opplastning. Dette er prima use case for [loops](https://www.terraform.io/docs/language/meta-arguments/for_each.html).
     ```terraform
-    frontend_zip  = "https://github.com/bekk/iac-workshop/releases/latest/download/iac-workshop-frontend.zip"
-    ```
+    resource "azurerm_storage_blob" "payload" {
+     // Vi trenger kun ferdige statiske filer
+     for_each               = fileset("${local.frontend_dir}/build", "**")
+     name                   = each.value
+     storage_account_name   = azurerm_storage_account.web.name
+     storage_container_name = "$web"
+     type                   = "Block"
+     source                 = "${local.frontend_dir}/build/${each.value}"
+     content_md5            = filemd5("${local.frontend_dir}/build/${each.value}")
+     content_type           = "<lag en mekanisme for å sette inn riktig MIME-type, f.eks. application/json>"
 
-1. I `frontend-hacks.tf` har vi kommentert ut litt kode. Fjern linjene som starter med `/*` og `*/`. Kjør så `terraform apply`.
+     depends_on = [null_resource.build-frontend-if-src-changed]
+   }
+   ```
 
-1. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
+5. Kjør `terraform apply`. Avhengig av hvordan du har løst det, kan det hende du må kjøre to ganger. I så fall, forstår du hvorfor?. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
 
 Dersom nettsiden fungerer er du ferdig med dette steget.
 
-Terraform er ikke nødvendigvis den beste måten å deploye kode på, men vi har tatt det med her for å vise at det er mulig. Som filnavnene tilsier er dette en slags "hack" og du bør tenke deg godt om før du bruker dette til en viktig app i produksjon. Dersom du er interessert i å finne ut av hvordan dette fungerer kan du se på ekstra-oppgavene som kommer til slutt.
+Terraform er ikke nødvendigvis den beste måten å deploye kode på, men vi har tatt det med her for å vise at det er _mulig_. I et reelt scenario ville man mest sannsynlig ønske å gjøre det på andre måter.
 
 ## DNS
 
@@ -281,7 +304,7 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
     ```terraform
     data "azurerm_dns_zone" "rettiprod_live" {
       name                = "rettiprod.live"
-      resource_group_name = "rett-i-prod-admin"
+      resource_group_name = "workshop-admin"
     }
     ```
 
@@ -356,10 +379,6 @@ Merk at ettersom all tilstanden slettes av `terraform destroy`, vil den unike id
 
 Her kan du slå opp de ulike ressursene vi har brukt, og prøve å finne forklaringen på ressursblokker eller argumenter du ikke forstår. Dokumentasjonen finner du [her](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs).
 
-### Finn ut hvordan frontend-hackene fungerer
-
-For å deploye frontend-filene har vi lagd et par script i `infrastructure/hacks/`, samt `frontend-hacks.tf`. Disse filene er godt kommentert for å forklare hva som foregår. I tillegg kan terraform-dokumentasjonen for providerne [external](https://registry.terraform.io/providers/hashicorp/external/latest/docs) og [null_resource i null-provideren](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) som begge brukes her.
-
 ### Sett opp en database
 
 Backenden støtter følgende databaser: H2, MSSQL, MySQL og PostgreSQL. Som standard [benyttes H2](./backend/src/main/resources/application.properties) (in-memory database). Finn ut hvordan man konfigurerer en alternativ database via miljøvariabler, samt hvordan man provisjonerer en med Terraform (f.eks. [`azurerm_postgresql_server`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/postgresql_server).
@@ -374,7 +393,7 @@ Oppdatér `backend_url` outputen til å bruke `https` og fjern portspesifikasjon
 
 Test at det fungerer ved å sjekke at du får suksessfull respons fra `https://xxxxxxxx.rettiprod.live/api/articles`.
 
-TODO: Frontend må endres for å bruke HTTPS-endepunkt.
+Videre bør man oppdatere `REACT_APP_BACKEND_URL` i `frontend.tf` til å bruke HTTPS fremfor HTTP for å unngå advarsler om og problemer med [mixed content](https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content).
 
 Nyttige lenker:
 

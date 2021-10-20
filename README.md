@@ -342,22 +342,55 @@ Dersom den nye URL-en fungerer, er du ferdig. Bra jobba! 👏
 
 ## Ekstra
 
-Du har nå fått hobbyprosjeketet ditt ut i prod! 🚀 Hvis du har tid til overs så har vi noen ekstraoppgaver du kan prøve deg på. Du kan selv velge hvilke du vil gjøre, de er ikke i en spesiell rekkefølge.
+Du har nå fått hobbyprosjeketet ditt ut i prod! 🚀 Hvis du har tid til overs så har vi noen ekstraoppgaver du kan prøve deg på. Du kan selv velge hvilke du vil gjøre, de fleste er ikke i en spesiell rekkefølge.
 
-* **Slett ressursene du har opprettet:** Dersom du ønsker å slette alle ressursene kan du kjøre `terraform destroy`. Dette vil fjerne alle ressursene i Azure, og nullstille terraform-tilstanden. Dersom du ønsker å opprette ressursene på nytt kan du kjøre `terraform apply` igjen, og alle ressursene vil opprettes på nytt.
+### Slett ressursene du har opprettet
 
-    Merk at ettersom all tilstanden slettes av `terraform destroy`, vil den unike id-en bli generert på nytt av terraform. Dermed blir også ressursgruppenavnet og URL-ene nye.
+Dersom du ønsker å slette alle ressursene kan du kjøre `terraform destroy`. Dette vil fjerne alle ressursene i Azure, og nullstille terraform-tilstanden. Dersom du ønsker å opprette ressursene på nytt kan du kjøre `terraform apply` igjen, og alle ressursene vil opprettes på nytt.
 
-    **NB!** `terraform destroy` vil ugjenopprettelig slette data som ikke er definert av terraform. F.eks. data i databaser, hemmeligheter i key vaults eller brukeropplastede filer i en storage account. I denne workshopen er det trygt, men vær forsiktig om du bruker terraform til faktiske applikasjoner.
+Merk at ettersom all tilstanden slettes av `terraform destroy`, vil den unike id-en bli generert på nytt av terraform. Dermed blir også ressursgruppenavnet og URL-ene nye.
 
-* **Les om terraform-provideren for Azure:** Her kan du slå opp de ulike ressursene vi har brukt, og prøve å finne forklaringen på ressursblokker eller argumenter du ikke forstår. Dokumentasjonen finner du [her](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs).
+**NB!** `terraform destroy` vil ugjenopprettelig slette data som ikke er definert av terraform. F.eks. data i databaser, hemmeligheter i key vaults eller brukeropplastede filer i en storage account. I denne workshopen er det trygt, men vær forsiktig om du bruker terraform til faktiske applikasjoner.
 
-* **Finn ut hvordan frontend-hackene fungerer:** For å deploye frontend-filene har vi lagd et par script i `infrastructure/hacks/`, samt `frontend-hacks.tf`. Disse filene er godt kommentert for å forklare hva som foregår. I tillegg kan terraform-dokumentasjonen for providerne [external](https://registry.terraform.io/providers/hashicorp/external/latest/docs) og [null_resource i null-provideren](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) som begge brukes her.
+### Les om terraform-provideren for Azure
 
-* **Sett opp en database:**
-  Backenden støtter følgende databaser: H2, MSSQL, MySQL og PostgreSQL. Som standard [benyttes H2](./backend/src/main/resources/application.properties) (in-memory database). Finn ut hvordan man konfigurerer en alternativ database via miljøvariabler, samt hvordan man provisjonerer en med Terraform (f.eks. [`azurerm_postgresql_server`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/postgresql_server). 
+Her kan du slå opp de ulike ressursene vi har brukt, og prøve å finne forklaringen på ressursblokker eller argumenter du ikke forstår. Dokumentasjonen finner du [her](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs).
+
+### Finn ut hvordan frontend-hackene fungerer
+
+For å deploye frontend-filene har vi lagd et par script i `infrastructure/hacks/`, samt `frontend-hacks.tf`. Disse filene er godt kommentert for å forklare hva som foregår. I tillegg kan terraform-dokumentasjonen for providerne [external](https://registry.terraform.io/providers/hashicorp/external/latest/docs) og [null_resource i null-provideren](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) som begge brukes her.
+
+### Sett opp en database
+
+Backenden støtter følgende databaser: H2, MSSQL, MySQL og PostgreSQL. Som standard [benyttes H2](./backend/src/main/resources/application.properties) (in-memory database). Finn ut hvordan man konfigurerer en alternativ database via miljøvariabler, samt hvordan man provisjonerer en med Terraform (f.eks. [`azurerm_postgresql_server`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/postgresql_server).
+
+### Slå på HTTPS for backend
+
+Det kan være nyttig med HTTPS. Det enkleste er en løsning som håndterer HTTPS sertifikater automatisk for oss, f.eks. ved å spinne opp en ny container i Azure Container Instances som fungerer som en *reverse proxy* og tar seg av dette.
+
+Caddy kan brukes som reverse proxy. Container-imaget `caddy` inneholder alt du trenger, og kjøres ved å bruke kommandoen `caddy reverse-proxy --from <ekstern-aci-url> --to <intern-backend-url>` når containeren skal startes. Du vil også trenge å konfigurere et `volume` for containeren, der Caddy-instansen kan lagre data. Dette gjøres enklest ved å lage en file share i en storage account. Konfigurer port `80` og `433` for containeren.
+
+Oppdatér `backend_url` outputen til å bruke `https` og fjern portspesifikasjonen (den vil da automatisk bruke `443`).
+
+Test at det fungerer ved å sjekke at du får suksessfull respons fra `https://xxxxxxxx.rettiprod.live/api/articles`.
+
+TODO: Frontend må endres for å bruke HTTPS-endepunkt.
+
+Nyttige lenker:
+
+* [Azure Container Instance](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_group)
+* [Storage Account](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) og [file share](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_share)
+
+### Slå på HTTPS for frontend med eget domene
+
+For å gjøre dette steget må HTTPS fungere for backend først. Storage accounten støtter HTTPS ut av boksen med sitt eget domene (typisk `<storage-account-navn>.z6.web.core.windows.net`), men om vi skal ha HTTPS for eget domene blir det komplisert. Det finnes flere måter å gjøre dette på, men her skal vi sette opp en CDN som håndterer sertifikatet for oss. Terraform-dokumentasjonen for [`azurerm_cdn_endpoint_custom_domain`](https://registry.terraform.io/providers/hashicorp/azurerm/2.78.0/docs/resources/cdn_endpoint_custom_domain) har et godt eksempel på hvordan en CDN kan settes opp med eget domene. HTTPS for eget domene mangler dessverre fortsatt i provideren, men det [jobbes med](https://github.com/hashicorp/terraform-provider-azurerm/pull/13283), og det er heller ikke støttet i ARM templates. Az CLI har støtte for dette med kommandoen `az cdn custom-domain enable-https --endpoint-name <endpoint-name> --name <endpoint-custom-domain-resource-name> --profile-name <cdn-profile-name> --resource-group <rg-name>`.
+
+Vi kan kjøre kommandoer ved hjelp av en `local-exec` [provisioner](https://www.terraform.io/docs/language/resources/provisioners/syntax.html) inne i `azurerm_cdn_endpoint_custom_domain`-ressursen.
+
+**Merk:** CDN i Azure kan oppføre seg rart. F.eks. er det vanskelig å slette et CDN endpoint, fordi det ikke er mulig å slette så lenge det finnes en gyldig DNS record som peker mot endpointet. Dermed må DNS recorden slettes først (f.eks. `terraform destroy -target azurerm_dns_cname_record.www`), TTL må utløpe og så kan resten av ressursene slettes som vanlig (typisk med `terraform destroy`).
 
 ### Gjøre endringer på applikasjonene
+
 1. Lag en fork av dette repoet (bruk knappen øverst til høyre), og lag en fork som ligger under din egen bruker. URL-en til det nye repoet blir da `https://github.com/<ditt-github-brukernavn>/iac-workshop`.
 
 1. Gå til din fork av dette repoet. Her må du gjøre noen instillinger:

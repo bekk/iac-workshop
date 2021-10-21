@@ -2,15 +2,15 @@
 
 Denne workshopen gir en intro til infrastructure as code (IaC) med [terraform](https://www.terraform.io/). Se slides i [docs](/docs).
 
-**NB:** Per nå har workshopen en antagelse om at du jobber i Bekk, men dette kan refaktoreres ut i fremtiden.
+NB! Denne workshopen krever at enkelte ressurser er satt opp for å bruke egne domenenavn. Dersom du skal gå gjennom workshopen på egenhånd vil ikke alt fungere.
 
 ## Før du starter
 
-1. Installér `az` og `terraform`, f.eks. ved hjelp av [brew](https://brew.sh/): `brew install azure-cli terraform`. Sjekk at terraform versjonen din er minst `v1.0.0` ved å kjøre `terraform version`.
+1. Installér `az` og `terraform`, `npm` og `node`, f.eks. ved hjelp av [brew](https://brew.sh/): `brew install azure-cli terraform node@14`. Sjekk at terraform versjonen din er minst `v1.0.0` ved å kjøre `terraform version`.
 
 1. Det kan være lurt å installere en plugin i editoren din. VS Code har f.eks. extensionen "Hashicorp Terraform". Alternativt bruke et JetBrains IDE som IntelliJ med pluginen "HashiCorp Terraform / HCL language support".
 
-1. Skriv `az login` i terminalen for å logge inn i Azure. Her skal du logge inn med din Bekk-konto. Når det er gjort kan du bruke `az account show` til å sjekke at du er logget på, og at du bruker Nettskyprogrammet-subscriptionen.
+1. Skriv `az login` i terminalen for å logge inn i Azure. Her skal du logge inn med din Bekk-konto. Når det er gjort kan du bruke `az account show` til å sjekke at du er logget på, og at du bruker `iac-workshop`-subscriptionen. Dersom det ikke stemmer kan du bruke `az account set -s iac-workshop` for å bytte subscription, verifiser etterpå med `az account show`.
 
 1. Klon repoet med git
 
@@ -60,7 +60,7 @@ Backend-koden bygget til et Docker-image, som lastes opp i GitHub package regist
 
    Her opprettes to konstanter `server_port` og `mgmt_port`, som vi kan referere til senere, f.eks. ved å skrive `local.server_port`. Verdiene som er gitt er ikke tilfeldige, og samsvarer med det som står i `backend/src/main/resources/application.properties`.
 
-1. Vi trenger også en ny variabel, `backend_image` i `variables.tf`. Den kan defineres slik:
+1. Vi trenger også en ny variabel, `backend_image`, i `variables.tf`. Den kan defineres slik:
 
     ```terraform
     variable "backend_image" {
@@ -170,13 +170,13 @@ Vi skal bruke Azure Blob Storage til å hoste statiske filer frontend-filer. For
 
 Først skal vi opprette en ny storage account:
 
-1. Opprett en ny fil, `frontend.tf`, og legg til følgende kode:
+1. Opprett en ny fil, `frontend.tf`, og legg til følgende kode og erstatt `<ressursgruppenavn>` og `<ressursgrupperegion>` med riktige verdier ved å bruke ressursgruppe-ressursen som er opprettet tidligere. (Hint: hvordan er dette gjort for andre ressurser vi har allerede har opprettet?)
 
     ```terraform
     resource "azurerm_storage_account" "web" {
       name                      = local.unique_id_sanitized
-      resource_group_name       = azurerm_resource_group.rg.name
-      location                  = azurerm_resource_group.rg.location
+      resource_group_name       = <ressursgruppenavn>
+      location                  = <ressursgrupperegion>
       account_tier              = "Standard"
       account_replication_type  = "LRS"
       allow_blob_public_access  = true
@@ -193,7 +193,7 @@ Først skal vi opprette en ny storage account:
 
     * `allow_blob_public_access` er verdt å merke seg. Denne tillater at hvem som helst kan få tilgang til filer i blobs i storage accounten, så lenge de kjenner URL-en. Normalt vil denne settes til `false`, men her ønsker vi at andre kan få tilgang og setter den til `true`, slik at vi kan bruke den til å statiske filer for en allment tilgjengelig nettside.
 
-    * `enable_https_traffic_only` er vanligvis lurt å sette til `true`, men i denne workshopen skal vi ikke sette opp sertifikater, så da må vi nøye oss med `http`.
+    * `enable_https_traffic_only` er vanligvis lurt å sette til `true`, men foreløpig skal vi ikke sette opp HTTPS (det kan du gjøre i ekstraoppgavene på slutten).
 
 1. Kjør `terraform apply`. Når storage accounten er opprettet kan du sjekke i ressursgruppen din at du finner en ressurs av typen "Storage account" med navn `iacworkshopxxxxxxxx`.
 
@@ -239,14 +239,35 @@ For at brukere skal kunne se og lage poster i Bekkium må frontenden opp. I dett
 
 For å kunne nå de statiske i nettleseren, må vi deploye filene i storage account containeren `$web`.
 
-1. Først må vi bygge frontenden. Opprett en [null_resource](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) i `frontend.tf` for å holde styr på når frontend-koden endrer seg, for derfor å trigge et nytt bygg:
+1. For å hjelpe deg litt på vei har vi definert noen lokale variable some blir nyttige, disse kan puttes på toppen av `frontend.tf`.
+
     ```terraform
-    // På toppen av fila, sett inn en variabel
     locals {
-      frontend_dir = "${path.module}/../frontend"
+      frontend_dir   = "${path.module}/../frontend"
+      frontend_files = fileset(local.frontend_dir, "**")
+      frontend_src = {
+        for fn in local.frontend_files :
+        fn => filemd5("${local.frontend_dir}/${fn}") if(length(regexall("(node_modules/.*)|build/.*", fn)) == 0)
+      }
+
+      mime_types = {
+        ".gif"  = "image/gif"
+        ".html" = "text/html"
+        ".ico"  = "image/vnd.microsoft.icon"
+        ".jpeg" = "image/jpeg"
+        ".jpg"  = "image/jpeg"
+        ".js"   = "text/javascript"
+        ".json" = "application/json"
+        ".map"  = "application/json"
+        ".png"  = "image/png"
+        ".txt"  = "text/plain"
+      }
     }
-   
-    // I bunn av filen
+    ```
+
+1. Først må vi bygge frontenden. Opprett en [null_resource med trigger](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) i `frontend.tf` for å holde styr på når frontend-koden endrer seg og bygge koden på nytt når nødvendig. Sett inn en trigger så denne ressursen bare trigges når frontend-koden endres, og sørg for at addressen i `REACT_APP_BACKEND_URL` er riktig.
+
+    ```terraform
     resource "null_resource" "build-frontend-if-src-changed" {
       triggers = "<sett inn en variabel som holder styr på hvilke filer som finnes og om de har endret seg>"
 
@@ -262,24 +283,25 @@ For å kunne nå de statiske i nettleseren, må vi deploye filene i storage acco
     }
     ```
 
-2. Når frontend-filene er bygget i `frontend/build` er de klare for opplastning. Dette er prima use case for [loops](https://www.terraform.io/docs/language/meta-arguments/for_each.html).
+1. Når frontend-filene er bygget i `frontend/build` er de klare for opplastning. Vi skal nå laste opp hver enkelt fil som en blob til `$web` containeren. Dette er prima use case for [loops](https://www.terraform.io/docs/language/meta-arguments/for_each.html). For at filene skal tolkes riktig må MIME-typen være rett. Vi har allerede definert de nødvendige typene i `local.mime_types` map-et. Bruk [`lookup`-funksjonen](https://www.terraform.io/docs/language/functions/lookup.html) for å setter `content_type` til riktig MIME-type. (Hint: `regex("\\.[^.]+$", basename(each.value))` gir deg filendingen, og default kan være `null`).
+
     ```terraform
     resource "azurerm_storage_blob" "payload" {
-     // Vi trenger kun ferdige statiske filer
-     for_each               = fileset("${local.frontend_dir}/build", "**")
-     name                   = each.value
-     storage_account_name   = azurerm_storage_account.web.name
-     storage_container_name = "$web"
-     type                   = "Block"
-     source                 = "${local.frontend_dir}/build/${each.value}"
-     content_md5            = filemd5("${local.frontend_dir}/build/${each.value}")
-     content_type           = "<lag en mekanisme for å sette inn riktig MIME-type, f.eks. application/json>"
+      // Vi trenger kun ferdige statiske filer
+      for_each               = fileset("${local.frontend_dir}/build", "**")
+      name                   = each.value
+      storage_account_name   = azurerm_storage_account.web.name
+      storage_container_name = "$web"
+      type                   = "Block"
+      source                 = "${local.frontend_dir}/build/${each.value}"
+      content_md5            = filemd5("${local.frontend_dir}/build/${each.value}")
+      content_type           = <sett inn riktig MIME-type>
 
-     depends_on = [null_resource.build-frontend-if-src-changed]
-   }
-   ```
+      depends_on = [null_resource.build-frontend-if-src-changed]
+    }
+    ```
 
-5. Kjør `terraform apply`. Avhengig av hvordan du har løst det, kan det hende du må kjøre to ganger. I så fall, forstår du hvorfor?. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
+1. Kjør `terraform apply`. Avhengig av hvordan du har løst det, kan det hende du må kjøre to ganger. I så fall, forstår du hvorfor?. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
 
 Dersom nettsiden fungerer er du ferdig med dette steget.
 
@@ -297,9 +319,7 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
     }
     ```
 
-    Her lager vi en ny `locals`-blokk som definerer konstanten `assumed_storage_account_web_host`.
-
-1. Videre har vi lagd satt opp de nødvendige, delte ressursene for domenet `rettiprod.live` i ressursgruppen `rett-i-prod-admin`. Vi må referere til disse ressursene for å lage et subdomene. Det gjør vi ved å opprette følgende `data`-blokk:
+1. Videre har vi lagd satt opp de nødvendige, delte ressursene for domenet `rettiprod.live` i ressursgruppen `workshop-admin`. Vi må referere til disse ressursene for å lage et subdomene. Det gjør vi ved å opprette følgende `data`-blokk:
 
     ```terraform
     data "azurerm_dns_zone" "rettiprod_live" {
@@ -321,47 +341,32 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
     }
     ```
 
-    * Legg merke til at `resource_group_name` her blir `rett-i-prod-admin`, og ikke ressursgruppen du tidligere har opprettet. Dette er fordi alle DNS-ressursene må ligge i samme ressursgruppe.
+    * Legg merke til at `resource_group_name` her blir `workshop-admin`, og ikke ressursgruppen du tidligere har opprettet. Dette er fordi alle DNS-ressursene må ligge i samme ressursgruppe.
 
     * `name` her blir navnet på subdomenet, i vårt tilfelle den unike ID-en `xxxxxxxx` som terraform har generert for deg, og `record` er URL-en til den statiske nettsiden i storage accounten.
 
 1. Kjør `terraform apply`. Du kan sjekke at dette ble opprettet riktig ved å gå til `rett-i-prod-admin` ressursgruppen i Azure-portalen. Trykke på ressursen som heter `rettiprod.live` og sjekke at det er opprettet en CNAME record, med samme navn som din unike id (`xxxxxxxx`).
 
-1. Nå må vi oppdatere `azurerm_storage_account` ressursen i `frontend.tf` slik at den aksepterer requests med det nye domenenavnet.
+1. Nå må vi oppdatere `azurerm_storage_account` ressursen i `frontend.tf` slik at den aksepterer requests med det nye domenenavnet. Storage accounten må nå provisjoneres opp etter at DNS-recorden er klar, hvis ikke vil det ikke fungere. Det kan vi ordne ved å legge in et [`depends_on`-array](https://www.terraform.io/docs/language/meta-arguments/depends_on.html).
 
     ```terraform
     resource "azurerm_storage_account" "web" {
         // Argumentene fra tidligere er uforandret
 
-        // Legg til dette:
       custom_domain {
         name          = local.web_hostname
         use_subdomain = false
       }
 
-      depends_on = [
-        azurerm_dns_cname_record.www
-      ]
+      // Legg til depends_on her.
     }
     ```
 
-    Her skjer det to ting:
-
-    * Vi legger det nye domenet i `custom_domain`-blokken.
-
-    * Vi sier at storage accounten er avhengig av DNS recorden som ble opprettet tidligere. Dette er fordi DNS recorden må bli opprettet først for at dette skal fungere.
-
-1. Lag en ny output-variabel i `outputs.tf` som gir oss det nye domenenavnet:
-
-    ```terraform
-    output "frontend_url" {
-      value = "http://${local.web_hostname}"
-    }
-    ```
+1. Lag en ny output-variabel, `frontend_url` som gir oss den nye URL-en til frontenden.
 
 1. Kjør `terraform apply` og gå til URL-en du får i output.
 
-Dersom den nye URL-en fungerer, er du ferdig. Bra jobba! 👏
+Dersom du får den nye nye URL-en som output (den skal se ca. slik ut: `http://xxxxxxx.rettiprod.live`) og den fungerer, er du ferdig. Bra jobba! 👏
 
 ## Ekstra
 
@@ -405,6 +410,8 @@ Nyttige lenker:
 For å gjøre dette steget må HTTPS fungere for backend først. Storage accounten støtter HTTPS ut av boksen med sitt eget domene (typisk `<storage-account-navn>.z6.web.core.windows.net`), men om vi skal ha HTTPS for eget domene blir det komplisert. Det finnes flere måter å gjøre dette på, men her skal vi sette opp en CDN som håndterer sertifikatet for oss. Terraform-dokumentasjonen for [`azurerm_cdn_endpoint_custom_domain`](https://registry.terraform.io/providers/hashicorp/azurerm/2.78.0/docs/resources/cdn_endpoint_custom_domain) har et godt eksempel på hvordan en CDN kan settes opp med eget domene. HTTPS for eget domene mangler dessverre fortsatt i provideren, men det [jobbes med](https://github.com/hashicorp/terraform-provider-azurerm/pull/13283), og det er heller ikke støttet i ARM templates. Az CLI har støtte for dette med kommandoen `az cdn custom-domain enable-https --endpoint-name <endpoint-name> --name <endpoint-custom-domain-resource-name> --profile-name <cdn-profile-name> --resource-group <rg-name>`.
 
 Vi kan kjøre kommandoer ved hjelp av en `local-exec` [provisioner](https://www.terraform.io/docs/language/resources/provisioners/syntax.html) inne i `azurerm_cdn_endpoint_custom_domain`-ressursen.
+
+Du kan nå også sette `enable_https_traffic_only` til `true` for storage accounten.
 
 **Merk:** CDN i Azure kan oppføre seg rart. F.eks. er det vanskelig å slette et CDN endpoint, fordi det ikke er mulig å slette så lenge det finnes en gyldig DNS record som peker mot endpointet. Dermed må DNS recorden slettes først (f.eks. `terraform destroy -target azurerm_dns_cname_record.www`), TTL må utløpe og så kan resten av ressursene slettes som vanlig (typisk med `terraform destroy`).
 

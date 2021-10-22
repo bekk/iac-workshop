@@ -6,7 +6,7 @@ locals {
 // If the workshop is run externally, these values should be changed
 data "azurerm_dns_zone" "rettiprod_live" {
   name                = "rettiprod.live"
-  resource_group_name = "rett-i-prod-admin"
+  resource_group_name = "workshop-admin"
 }
 
 resource "azurerm_dns_cname_record" "www" {

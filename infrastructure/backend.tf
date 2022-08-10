@@ -15,7 +15,7 @@ resource "azurerm_container_group" "backend" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   name                = "${local.resource_prefix}backend"
-  ip_address_type     = "public"
+  ip_address_type     = "Public"
   dns_name_label      = local.unique_id_raw
   os_type             = "Linux"
 
@@ -83,4 +83,5 @@ resource "azurerm_storage_account" "aci_caddy" {
 resource "azurerm_storage_share" "aci_caddy" {
   name                 = "aci-caddy-data"
   storage_account_name = azurerm_storage_account.aci_caddy.name
+  quota                = 10 # GB
 }

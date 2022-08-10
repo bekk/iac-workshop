@@ -102,7 +102,7 @@ Backend-koden bygget til et Docker-image, som lastes opp i GitHub package regist
       resource_group_name = azurerm_resource_group.rg.name
       location            = azurerm_resource_group.rg.location
       name                = "${local.resource_prefix}backend"
-      ip_address_type     = "public"
+      ip_address_type     = "Public"
       dns_name_label      = local.unique_id_raw
       os_type             = "Linux"
 
@@ -174,14 +174,14 @@ Først skal vi opprette en ny storage account:
 
     ```terraform
     resource "azurerm_storage_account" "web" {
-      name                      = local.unique_id_sanitized
-      resource_group_name       = <ressursgruppenavn>
-      location                  = <ressursgrupperegion>
-      account_tier              = "Standard"
-      account_replication_type  = "LRS"
-      allow_blob_public_access  = true
-      enable_https_traffic_only = false
-      min_tls_version           = "TLS1_2"
+      name                             = local.unique_id_sanitized
+      resource_group_name              = <ressursgruppenavn>
+      location                         = <ressursgrupperegion>
+      account_tier                     = "Standard"
+      account_replication_type         = "LRS"
+      allow_nested_items_to_be_public  = true
+      enable_https_traffic_only        = false
+      min_tls_version                  = "TLS1_2"
     }
     ```
 
@@ -191,7 +191,7 @@ Først skal vi opprette en ny storage account:
 
     * `name` er satt til `local.unique_id_sanitized`, som er definert i `main.tf`. Navnet på en storage account må være globalt unikt, dvs. ingen storage accounts i Azure kan ha det samme navnet, dermed må vi ha et navn som inneholder en unik id som reduserer sjansen for at noen andre har samme navn.
 
-    * `allow_blob_public_access` er verdt å merke seg. Denne tillater at hvem som helst kan få tilgang til filer i blobs i storage accounten, så lenge de kjenner URL-en. Normalt vil denne settes til `false`, men her ønsker vi at andre kan få tilgang og setter den til `true`, slik at vi kan bruke den til å statiske filer for en allment tilgjengelig nettside.
+    * `allow_nested_items_to_be_public` er verdt å merke seg. Denne tillater at hvem som helst kan få tilgang til blobs (filer) i storage accounten, så lenge de kjenner URL-en. Normalt vil det være lurt å sette denne `false`, men her ønsker vi at andre kan få tilgang og setter den til `true`, slik at vi kan bruke den til å statiske filer for en allment tilgjengelig nettside.
 
     * `enable_https_traffic_only` er vanligvis lurt å sette til `true`, men foreløpig skal vi ikke sette opp HTTPS (det kan du gjøre i ekstraoppgavene på slutten).
 
@@ -392,7 +392,7 @@ Backenden støtter følgende databaser: H2, MSSQL, MySQL og PostgreSQL. Som stan
 
 Det kan være nyttig med HTTPS. Det enkleste er en løsning som håndterer HTTPS sertifikater automatisk for oss, f.eks. ved å spinne opp en ny container i Azure Container Instances som fungerer som en *reverse proxy* og tar seg av dette.
 
-Caddy kan brukes som reverse proxy. Container-imaget `caddy` inneholder alt du trenger, og kjøres ved å bruke kommandoen `caddy reverse-proxy --from <ekstern-aci-url> --to <intern-backend-url>` når containeren skal startes. Du vil også trenge å konfigurere et `volume` for containeren, der Caddy-instansen kan lagre data. Dette gjøres enklest ved å lage en file share i en storage account. Konfigurer port `80` og `433` for containeren.
+Caddy kan brukes som reverse proxy. Container-imaget `caddy` inneholder alt du trenger, og kjøres ved å bruke kommandoen `caddy reverse-proxy --from <ekstern-aci-url> --to <intern-backend-url>` når containeren skal startes. Du vil også trenge å konfigurere et `volume` for containeren, der Caddy-instansen kan lagre data. Dette gjøres enklest ved å lage en file share i en storage account (`azurerm_storage_share`). Konfigurer port `80` og `433` for containeren.
 
 Oppdatér `backend_url` outputen til å bruke `https` og fjern portspesifikasjonen (den vil da automatisk bruke `443`).
 
@@ -407,13 +407,9 @@ Nyttige lenker:
 
 ### Slå på HTTPS for frontend med eget domene
 
-For å gjøre dette steget må HTTPS fungere for backend først. Storage accounten støtter HTTPS ut av boksen med sitt eget domene (typisk `<storage-account-navn>.z6.web.core.windows.net`), men om vi skal ha HTTPS for eget domene blir det komplisert. Det finnes flere måter å gjøre dette på, men her skal vi sette opp en CDN som håndterer sertifikatet for oss. Terraform-dokumentasjonen for [`azurerm_cdn_endpoint_custom_domain`](https://registry.terraform.io/providers/hashicorp/azurerm/2.78.0/docs/resources/cdn_endpoint_custom_domain) har et godt eksempel på hvordan en CDN kan settes opp med eget domene. HTTPS for eget domene mangler dessverre fortsatt i provideren, men det [jobbes med](https://github.com/hashicorp/terraform-provider-azurerm/pull/13283), og det er heller ikke støttet i ARM templates. Az CLI har støtte for dette med kommandoen `az cdn custom-domain enable-https --endpoint-name <endpoint-name> --name <endpoint-custom-domain-resource-name> --profile-name <cdn-profile-name> --resource-group <rg-name>`.
-
-Vi kan kjøre kommandoer ved hjelp av en `local-exec` [provisioner](https://www.terraform.io/docs/language/resources/provisioners/syntax.html) inne i `azurerm_cdn_endpoint_custom_domain`-ressursen.
+For å gjøre dette steget må HTTPS fungere for backend først. Storage accounten støtter HTTPS ut av boksen med sitt eget domene (typisk `<storage-account-navn>.z6.web.core.windows.net`), men om vi skal ha HTTPS for eget domene blir det komplisert. Det finnes flere måter å gjøre dette på, men her skal vi sette opp en CDN som håndterer sertifikatet for oss. Terraform-dokumentasjonen for [`azurerm_cdn_endpoint_custom_domain`](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/cdn_endpoint_custom_domain) har et godt eksempel på hvordan en CDN kan settes opp med eget domene. I tillegg må du bruke underressursen `cdn_managed_https` for å få HTTPS for domenet. Merk at når du skrur på HTTPS vil `terraform apply` kjøre til sertifikater er ferdig provisjonert av Azure - dette kan ta opp mot en time, i denne workshopen anbefaler vi at du gjør dette sist.
 
 Du kan nå også sette `enable_https_traffic_only` til `true` for storage accounten.
-
-**Merk:** CDN i Azure kan oppføre seg rart. F.eks. er det vanskelig å slette et CDN endpoint, fordi det ikke er mulig å slette så lenge det finnes en gyldig DNS record som peker mot endpointet. Dermed må DNS recorden slettes først (f.eks. `terraform destroy -target azurerm_dns_cname_record.www`), TTL må utløpe og så kan resten av ressursene slettes som vanlig (typisk med `terraform destroy`).
 
 ### Gjøre endringer på applikasjonene
 

@@ -7,7 +7,7 @@
     "@cypress/instrument-cra": "^1.4.0",
     "@testing-library/cypress": "^7.0.6",
     "@testing-library/jest-dom": "^5.14.1",
-    "@testing-library/react": "^12.0.0",
+    "@testing-library/react": "^13.0.0",
     "@testing-library/user-event": "^13.2.1",
     "cross-env": "^7.0.3",
     "react-scripts": "^5.0.1",
@@ -47,7 +47,7 @@
     "cy:open": "cypress open",
     "cy:run": "cypress run",
     "test:e2e": "start-test start:e2e :4100 cy:run",
-    "prepare": "husky install"
+    "prepare": "#husky install"
   },
   "browserslist": [
     ">0.2%",

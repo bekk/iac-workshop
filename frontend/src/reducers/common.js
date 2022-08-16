@@ -29,7 +29,7 @@ export const appLoad = (token) => (dispatch) => {
 };
 
 const initialState = {
-  appName: 'Conduit',
+  appName: 'Bekkium',
   appLoaded: false,
   viewChangeCounter: 0,
   redirectTo: undefined,

@@ -235,9 +235,17 @@ I dette steget har vi opprettet en ny storage account, med en storage account co
 
 ## Frontend deploy
 
-For at brukere skal kunne se og lage poster i Bekkium må frontenden opp. I dette eksempelet skal vi bruke Terraform for å lage de statiske frontend-filene og videre laste opp filer.
+For at brukere skal kunne se og lage poster i Bekkium må frontenden opp. Vi skal her bygge filene manuelt lokalt først (tilsvarende byggsteget i en CI/CD pipeline), og bruke terraform til å laste disse opp i storage accounten.
 
 For å kunne nå de statiske i nettleseren, må vi deploye filene i storage account containeren `$web`.
+
+1. For å rette frontenden til riktig backend må du sette miljøvariabelen `REACT_APP_BACKEND_URL` for bygget. Denne må være outputen `backend_url` som du får når du kjører `terraform apply` (den skal se ut omtrent som `http://xxxxxxxx.westeurope.azurecontainer.io:8080`), pluss `/api` som postfiks. Kommandoen du må kjøre fra `frontend/`-mappen blir dermed omtrent slik:
+
+    ```sh
+    npm ci && REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api" npm build
+    ```
+
+    Dersom alt gikk bra ligger nå den ferdigbygde frontenden i `frontend/build/`-mappen, klar for bruk i senere steg.
 
 1. For å hjelpe deg litt på vei har vi definert noen lokale variable some blir nyttige, disse kan puttes på toppen av `frontend.tf`.
 
@@ -265,25 +273,7 @@ For å kunne nå de statiske i nettleseren, må vi deploye filene i storage acco
     }
     ```
 
-1. Først må vi bygge frontenden. Opprett en [null_resource med trigger](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) i `frontend.tf` for å holde styr på når frontend-koden endrer seg og bygge koden på nytt når nødvendig. Sett inn en trigger så denne ressursen bare trigges når frontend-koden endres, og sørg for at addressen i `REACT_APP_BACKEND_URL` er riktig.
-
-    ```terraform
-    resource "null_resource" "build-frontend-if-src-changed" {
-      triggers = "<sett inn en variabel som holder styr på hvilke filer som finnes og om de har endret seg>"
-
-      provisioner "local-exec" {
-        working_dir = local.frontend_dir
-        # Laster ned avhengigheter og bygger statiske filer
-        command     = "npm ci && npm run build --if-present"
-        environment = {
-          # Pek på vårt allerede kjørende API
-          REACT_APP_BACKEND_URL = "http://<adresse til backend>/api"
-        }
-      }
-    }
-    ```
-
-1. Når frontend-filene er bygget i `frontend/build` er de klare for opplastning. Vi skal nå laste opp hver enkelt fil som en blob til `$web` containeren. Dette er prima use case for [loops](https://www.terraform.io/docs/language/meta-arguments/for_each.html). For at filene skal tolkes riktig må MIME-typen være rett. Vi har allerede definert de nødvendige typene i `local.mime_types` map-et. Bruk [`lookup`-funksjonen](https://www.terraform.io/docs/language/functions/lookup.html) for å setter `content_type` til riktig MIME-type. (Hint: `regex("\\.[^.]+$", basename(each.value))` gir deg filendingen, og default kan være `null`).
+1. Når frontend-filene er bygget i `frontend/build` er de klare for opplastning. Vi skal nå laste opp hver enkelt fil som en blob til `$web` containeren. Dette er prima use case for [løkker](https://www.terraform.io/docs/language/meta-arguments/for_each.html). For at filene skal tolkes riktig må MIME-typen være rett. Vi har allerede definert de nødvendige typene i `local.mime_types` map-et. Bruk [`lookup`-funksjonen](https://www.terraform.io/docs/language/functions/lookup.html) for å setter `content_type` til riktig MIME-type. (Hint: `regex("\\.[^.]+$", basename(each.value))` gir deg filendingen, og default kan være `null`).
 
     ```terraform
     resource "azurerm_storage_blob" "payload" {
@@ -296,16 +286,14 @@ For å kunne nå de statiske i nettleseren, må vi deploye filene i storage acco
       source                 = "${local.frontend_dir}/build/${each.value}"
       content_md5            = filemd5("${local.frontend_dir}/build/${each.value}")
       content_type           = <sett inn riktig MIME-type>
-
-      depends_on = [null_resource.build-frontend-if-src-changed]
     }
     ```
 
-1. Kjør `terraform apply`. Avhengig av hvordan du har løst det, kan det hende du må kjøre to ganger. I så fall, forstår du hvorfor?. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
+1. Kjør `terraform apply`. Dersom alt går fint, skal du nå se en nettside dersom du navigerer til URL-en for storage accounten (`storage_account_web_url` output-variabelen).
 
 Dersom nettsiden fungerer er du ferdig med dette steget.
 
-Terraform er ikke nødvendigvis den beste måten å deploye kode på, men vi har tatt det med her for å vise at det er _mulig_. I et reelt scenario ville man mest sannsynlig ønske å gjøre det på andre måter.
+Terraform er ikke nødvendigvis den beste måten å deploye kode på, men vi har tatt det med her for å vise at det er _mulig_. I et reelt scenario ville man kanskje ønske å gjøre det på andre måter.
 
 ## DNS
 
@@ -398,7 +386,11 @@ Oppdatér `backend_url` outputen til å bruke `https` og fjern portspesifikasjon
 
 Test at det fungerer ved å sjekke at du får suksessfull respons fra `https://xxxxxxxx.rettiprod.live/api/articles`.
 
-Videre bør man oppdatere `REACT_APP_BACKEND_URL` i `frontend.tf` til å bruke HTTPS fremfor HTTP for å unngå advarsler om og problemer med [mixed content](https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content).
+Videre bør man bygge frontenden på nytt (etterfulgt av en ny `terraform apply`), med ny `REACT_APP_BACKEND_URL` til å bruke HTTPS fremfor HTTP for å unngå advarsler om og problemer med [mixed content](https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content). Kommandoen for å bygge frontenden bør nå se omtrent slik ut:
+
+```sh
+npm ci && REACT_APP_BACKEND_URL="https://xxxxxxxx.rettiprod.live/api" npm build
+```
 
 Nyttige lenker:
 

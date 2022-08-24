@@ -36,19 +36,6 @@ resource "azurerm_storage_account" "web" {
   }
 }
 
-// If the current frontend source has changed, trigger a new frontend build
-resource "null_resource" "build-frontend-if-src-changed" {
-  triggers = local.frontend_src
-
-  provisioner "local-exec" {
-    working_dir = local.frontend_dir
-    command     = "npm ci && npm run build --if-present"
-    environment = {
-      REACT_APP_BACKEND_URL = "https://${azurerm_container_group.backend.fqdn}/api"
-    }
-  }
-}
-
 // Upload the latest built assets
 resource "azurerm_storage_blob" "payload" {
   for_each               = fileset("${local.frontend_dir}/build", "**")
@@ -59,6 +46,4 @@ resource "azurerm_storage_blob" "payload" {
   source                 = "${local.frontend_dir}/build/${each.value}"
   content_md5            = filemd5("${local.frontend_dir}/build/${each.value}")
   content_type           = lookup(local.mime_types, regex("\\.[^.]+$", basename(each.value)), null) // use known MIME type or fallback to default
-
-  depends_on = [null_resource.build-frontend-if-src-changed]
 }

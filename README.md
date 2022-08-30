@@ -242,7 +242,12 @@ For å kunne nå de statiske i nettleseren, må vi deploye filene i storage acco
 1. For å rette frontenden til riktig backend må du sette miljøvariabelen `REACT_APP_BACKEND_URL` for bygget. Denne må være outputen `backend_url` som du får når du kjører `terraform apply` (den skal se ut omtrent som `http://xxxxxxxx.westeurope.azurecontainer.io:8080`), pluss `/api` som postfiks. Kommandoen du må kjøre fra `frontend/`-mappen blir dermed omtrent slik:
 
     ```sh
+    # Bash (macOS/Linux/WSL)
     npm ci && REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api" npm build
+    # Powershell 7 (Windows)
+    $env:REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api"
+    npm ci
+    npm build
     ```
 
     Dersom alt gikk bra ligger nå den ferdigbygde frontenden i `frontend/build/`-mappen, klar for bruk i senere steg.

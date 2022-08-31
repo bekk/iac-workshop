@@ -342,7 +342,7 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
 
     * `name` her blir navnet på subdomenet, i vårt tilfelle den unike ID-en `xxxxxxxx` som terraform har generert for deg, og `record` er URL-en til den statiske nettsiden i storage accounten.
 
-1. Kjør `terraform apply`. Du kan sjekke at dette ble opprettet riktig ved å gå til `rett-i-prod-admin` ressursgruppen i Azure-portalen. Trykke på ressursen som heter `rettiprod.live` og sjekke at det er opprettet en CNAME record, med samme navn som din unike id (`xxxxxxxx`).
+1. Kjør `terraform apply`. Du kan sjekke at dette ble opprettet riktig ved å gå til `workshop-admin` ressursgruppen i Azure-portalen. Trykke på ressursen som heter `rettiprod.live` og sjekke at det er opprettet en CNAME record, med samme navn som din unike id (`xxxxxxxx`).
 
 1. Nå må vi oppdatere `azurerm_storage_account` ressursen i `frontend.tf` slik at den aksepterer requests med det nye domenenavnet. Storage accounten må nå provisjoneres opp etter at DNS-recorden er klar, hvis ikke vil det ikke fungere. Det kan vi ordne ved å legge in et [`depends_on`-array](https://www.terraform.io/docs/language/meta-arguments/depends_on.html).
 

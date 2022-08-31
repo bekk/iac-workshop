@@ -6,11 +6,15 @@ NB! Denne workshopen krever at enkelte ressurser er satt opp for å bruke egne d
 
 ## Før du starter
 
-1. Installér `az` og `terraform`, `npm` og `node`, f.eks. ved hjelp av [brew](https://brew.sh/): `brew install azure-cli terraform node@14`. Sjekk at terraform versjonen din er minst `v1.0.0` ved å kjøre `terraform version`.
+1. Installér `az` og `terraform`, `npm` og `node`, f.eks. ved hjelp av [brew](https://brew.sh/) om du bruker macOS: `brew install azure-cli terraform node@16`. Sjekk at terraform versjonen din er minst `v1.0.0` ved å kjøre `terraform version`, og at node versjonen er minst `v16.0.0` ved å kjøre `node --version`.
 
 1. Det kan være lurt å installere en plugin i editoren din. VS Code har f.eks. extensionen "Hashicorp Terraform". Alternativt bruke et JetBrains IDE som IntelliJ med pluginen "HashiCorp Terraform / HCL language support".
 
-1. Skriv `az login` i terminalen for å logge inn i Azure. Her skal du logge inn med din Bekk-konto. Når det er gjort kan du bruke `az account show` til å sjekke at du er logget på, og at du bruker `iac-workshop`-subscriptionen. Dersom det ikke stemmer kan du bruke `az account set -s iac-workshop` for å bytte subscription, verifiser etterpå med `az account show`.
+1. Du skal ha fått en mail fra oss med invitasjon som gir deg tilgang til workshopens Azure tenant. Denne emailen kommer fra `invitations@microsoft.com` og har tittelen "Bekk Terraform Workshop invited you to access applications within their organization". Trykk på "Accept Invitation" og følg stegene for å få tilgang til Azure-portalen (`portal.azure.com`).
+
+1. Når du har kommet til Azure-portalen, sjekk at det står "Bekk Terraform Workshop" øverst til høyre. Dersom det ikke gjør det, trykk på profilbildet ditt (øverst til høyre), deretter "Switch directory" og velg "Bekk Terraform Workshop" på siden du kommer til.
+
+1. Skriv `az login` i terminalen for å logge inn i Azure. Når det er gjort kan du bruke `az account show` til å sjekke at du er logget på, og at du bruker `iac-workshop`-subscriptionen. Dersom det ikke stemmer kan du bruke `az account set -s iac-workshop` for å bytte subscription, verifiser etterpå med `az account show`.
 
 1. Klon repoet med git
 

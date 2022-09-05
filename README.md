@@ -10,7 +10,7 @@ NB! Denne workshopen krever at enkelte ressurser er satt opp for å bruke egne d
 
 1. Det kan være lurt å installere en plugin i editoren din. VS Code har f.eks. extensionen "Hashicorp Terraform". Alternativt bruke et JetBrains IDE som IntelliJ med pluginen "HashiCorp Terraform / HCL language support".
 
-1. Du skal ha fått en mail fra oss med invitasjon som gir deg tilgang til workshopens Azure tenant. Denne emailen kommer fra `invitations@microsoft.com` og har tittelen "Bekk Terraform Workshop invited you to access applications within their organization". Trykk på "Accept Invitation" og følg stegene for å få tilgang til Azure-portalen (`portal.azure.com`).
+1. Du vil få utlevert credentials (et brukernavn og passord) for å få tilgang til Azure-portalen.
 
 1. Når du har kommet til Azure-portalen, sjekk at det står "Bekk Terraform Workshop" øverst til høyre. Dersom det ikke gjør det, trykk på profilbildet ditt (øverst til høyre), deretter "Switch directory" og velg "Bekk Terraform Workshop" på siden du kommer til.
 
@@ -219,7 +219,7 @@ Først skal vi opprette en ny storage account:
 
     * `index_document`-argumentet spesifiserer navnet på filen som brukes til når det kommer en request til rot-URL-en.
 
-1. Kjør `terraform apply`. Gå så til Azure-portalen, klikk deg inn på storage containeren og klikk på "Containers" i menyen til venstre.
+1. Kjør `terraform apply`. Gå så til Azure-portalen, klikk deg inn på storage accounten og klikk på "Containers" i menyen til venstre.
 
 1. Hva blir så URL-en til denne storage accounten? La oss lage en ny `output` i `outputs.tf`:
 

@@ -47,7 +47,7 @@
     "cy:open": "cypress open",
     "cy:run": "cypress run",
     "test:e2e": "start-test start:e2e :4100 cy:run",
-    "prepare": "#husky install"
+    "prepare": ""
   },
   "browserslist": [
     ">0.2%",

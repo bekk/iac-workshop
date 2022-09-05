@@ -247,11 +247,11 @@ For å kunne nå de statiske i nettleseren, må vi deploye filene i storage acco
 
     ```sh
     # Bash (macOS/Linux/WSL)
-    npm ci && REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api" npm build
+    npm ci && REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api" npm run build
     # Powershell 7 (Windows)
     $env:REACT_APP_BACKEND_URL="http://xxxxxxxx.westeurope.azurecontainer.io:8080/api"
     npm ci
-    npm build
+    npm run build
     ```
 
     Dersom alt gikk bra ligger nå den ferdigbygde frontenden i `frontend/build/`-mappen, klar for bruk i senere steg.

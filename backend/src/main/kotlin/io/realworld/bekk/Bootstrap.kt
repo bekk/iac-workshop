@@ -18,16 +18,17 @@ class Bootstrap(
     private val userRepository: UserRepository,
     private val articleRepository: ArticleRepository
 ) {
-    private val BEKK_USERNAME = "rett-i-prod"
+    private val BEKK_USERNAME = "rettIProd"
     private val BEKK_EMAIL = "rett-i-prod@bekk.no"
     private val BEKK_PASSWORD = BCrypt.hashpw("hello-world", BCrypt.gensalt())
+    private val BEKK_IMAGE = "https://www.gravatar.com/avatar/0815e29c2dc735c14e5adce310d9850c"
     
     @EventListener(ApplicationReadyEvent::class)
     fun initDatabase() {
         var user: User? = null
 
         if (!userRepository.existsByEmail(BEKK_EMAIL)) {
-            var bekkUser = User(email = BEKK_EMAIL, username = BEKK_USERNAME, password = BEKK_PASSWORD)
+            var bekkUser = User(email = BEKK_EMAIL, username = BEKK_USERNAME, password = BEKK_PASSWORD, image = BEKK_IMAGE)
             bekkUser.token = userService.newToken(bekkUser)
             bekkUser = userRepository.save(bekkUser)
             user = bekkUser

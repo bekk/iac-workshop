@@ -14,9 +14,11 @@ NB! Denne workshopen krever at enkelte ressurser er satt opp for å bruke egne d
 
 1. Om du har tid før workshopen starter, kan det være lurt å navigere til `frontend/` og kjøre `npm ci`.
 
-1. Du vil få utlevert credentials (et brukernavn og passord) for å få tilgang til Azure-portalen.
+1. Du vil få utlevert credentials (et brukernavn og passord) for å få tilgang til Azure-portalen. Gå til `portal.azure.com` og logg inn med de credentials du har fått utdelt.
 
-1. Når du har kommet til Azure-portalen, sjekk at det står "Bekk Terraform Workshop" øverst til høyre. Dersom det ikke gjør det, trykk på profilbildet ditt (øverst til høyre), deretter "Switch directory" og velg "Bekk Terraform Workshop" på siden du kommer til.
+  1. Når du har kommet til Azure-portalen, sjekk at det står "Bekk Terraform Workshop" øverst til høyre. Dersom det ikke gjør det, trykk på profilbildet ditt (øverst til høyre), deretter "Switch directory" og velg "Bekk Terraform Workshop" på siden du kommer til.
+
+  1. Dersom du allerede har en bruker i Azure-portalen, trykk på profilbildet øverstt til høyre og trykk "Sign in with a different account". Logg inn med credentials du har fått utdelt.
 
 1. Skriv `az login` i terminalen for å logge inn i Azure. Når det er gjort kan du bruke `az account show` til å sjekke at du er logget på, og at du bruker `iac-workshop`-subscriptionen. Dersom det ikke stemmer kan du bruke `az account set -s iac-workshop` for å bytte subscription, verifiser etterpå med `az account show`.
 

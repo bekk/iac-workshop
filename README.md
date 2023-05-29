@@ -311,7 +311,7 @@ Terraform er ikke nødvendigvis den beste måten å deploye kode på, men vi har
 
 ## DNS
 
-Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt opp domenet `rettiprod.live` og appen din skal få et subdomene på `xxxxxxxx.rettiprod.live`.
+Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt opp domenet `cloudlabs-azure.no` og appen din skal få et subdomene på `xxxxxxxx.cloudlabs-azure.no`.
 
 1. Opprett filen `dns.tf`. Og legg til følgende kode:
 
@@ -321,11 +321,11 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
     }
     ```
 
-1. Videre har vi lagd satt opp de nødvendige, delte ressursene for domenet `rettiprod.live` i ressursgruppen `workshop-admin`. Vi må referere til disse ressursene for å lage et subdomene. Det gjør vi ved å opprette følgende `data`-blokk:
+1. Videre har vi lagd satt opp de nødvendige, delte ressursene for domenet `cloudlabs-azure.no` i ressursgruppen `workshop-admin`. Vi må referere til disse ressursene for å lage et subdomene. Det gjør vi ved å opprette følgende `data`-blokk:
 
     ```terraform
-    data "azurerm_dns_zone" "rettiprod_live" {
-      name                = "rettiprod.live"
+    data "azurerm_dns_zone" "cloudlabs_azure_no" {
+      name                = "cloudlabs-azure.no"
       resource_group_name = "workshop-admin"
     }
     ```
@@ -334,8 +334,8 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
 
     ```terraform
     resource "azurerm_dns_cname_record" "www" {
-      zone_name           = data.azurerm_dns_zone.rettiprod_live.name
-      resource_group_name = data.azurerm_dns_zone.rettiprod_live.resource_group_name
+      zone_name           = data.azurerm_dns_zone.cloudlabs_azure_no.name
+      resource_group_name = data.azurerm_dns_zone.cloudlabs_azure_no.resource_group_name
 
       ttl    = 60
       name   = local.unique_id_raw
@@ -347,7 +347,7 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
 
     * `name` her blir navnet på subdomenet, i vårt tilfelle den unike ID-en `xxxxxxxx` som terraform har generert for deg, og `record` er URL-en til den statiske nettsiden i storage accounten.
 
-1. Kjør `terraform apply`. Du kan sjekke at dette ble opprettet riktig ved å gå til `workshop-admin` ressursgruppen i Azure-portalen. Trykke på ressursen som heter `rettiprod.live` og sjekke at det er opprettet en CNAME record, med samme navn som din unike id (`xxxxxxxx`).
+1. Kjør `terraform apply`. Du kan sjekke at dette ble opprettet riktig ved å gå til `workshop-admin` ressursgruppen i Azure-portalen. Trykke på ressursen som heter `cloudlabs-azure.no` og sjekke at det er opprettet en CNAME record, med samme navn som din unike id (`xxxxxxxx`).
 
 1. Nå må vi oppdatere `azurerm_storage_account` ressursen i `frontend.tf` slik at den aksepterer requests med det nye domenenavnet. Storage accounten må nå provisjoneres opp etter at DNS-recorden er klar, hvis ikke vil det ikke fungere. Det kan vi ordne ved å legge in et [`depends_on`-array](https://www.terraform.io/docs/language/meta-arguments/depends_on.html).
 
@@ -368,7 +368,7 @@ Til slutt skal vi sette opp et eget domene for appen. Denne gangen har vi satt o
 
 1. Kjør `terraform apply` og gå til URL-en du får i output.
 
-Dersom du får den nye nye URL-en som output (den skal se ca. slik ut: `http://xxxxxxx.rettiprod.live`) og den fungerer, er du ferdig. Bra jobba! 👏
+Dersom du får den nye nye URL-en som output (den skal se ca. slik ut: `http://xxxxxxx.cloudlabs-azure.no`) og den fungerer, er du ferdig. Bra jobba! 👏
 
 ## Ekstra
 
@@ -398,12 +398,12 @@ Caddy kan brukes som reverse proxy. Container-imaget `caddy` inneholder alt du t
 
 Oppdatér `backend_url` outputen til å bruke `https` og fjern portspesifikasjonen (den vil da automatisk bruke `443`).
 
-Test at det fungerer ved å sjekke at du får suksessfull respons fra `https://xxxxxxxx.rettiprod.live/api/articles`.
+Test at det fungerer ved å sjekke at du får suksessfull respons fra `https://xxxxxxxx.cloudlabs-azure.no/api/articles`.
 
 Videre bør man bygge frontenden på nytt (etterfulgt av en ny `terraform apply`), med ny `REACT_APP_BACKEND_URL` til å bruke HTTPS fremfor HTTP for å unngå advarsler om og problemer med [mixed content](https://developer.mozilla.org/en-US/docs/Web/Security/Mixed_content). Kommandoen for å bygge frontenden bør nå se omtrent slik ut:
 
 ```sh
-npm ci && REACT_APP_BACKEND_URL="https://xxxxxxxx.rettiprod.live/api" npm build
+npm ci && REACT_APP_BACKEND_URL="https://xxxxxxxx.cloudlabs-azure.no/api" npm build
 ```
 
 Nyttige lenker:

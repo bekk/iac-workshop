@@ -4,7 +4,7 @@ locals {
   unique_id           = "${local.resource_prefix}${random_string.id.result}"
   unique_id_sanitized = replace(local.unique_id, "-", "") # Some resources only support alphanumeric characters, and not '-'
 
-  web_hostname = "${local.unique_id_raw}.rettiprod.live"
+  web_hostname = "${local.unique_id_raw}.cloudlabs-azure.no"
 }
 
 resource "random_string" "id" {
